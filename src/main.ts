@@ -37,22 +37,22 @@ const startWorker = async (app: HTMLElement, srcCanvas: HTMLCanvasElement) => {
 
   const stream = srcCanvas.captureStream(FPS);
   const track = stream.getVideoTracks()[0];
-  const media_processor = new MediaStreamTrackProcessor({ track });
-  const reader = media_processor.readable;
+  const mediaProcessor = new MediaStreamTrackProcessor({ track });
+  const reader = mediaProcessor.readable;
 
   // Create a new destination canvas
-  const dst_cnv = document.createElement("canvas");
-  dst_cnv.width = srcCanvas.width;
-  dst_cnv.height = srcCanvas.height;
-  dst_cnv.id = "dst";
-  app.appendChild(dst_cnv);
+  const dstCanvas = document.createElement("canvas");
+  dstCanvas.width = srcCanvas.width;
+  dstCanvas.height = srcCanvas.height;
+  dstCanvas.id = "dst";
+  app.appendChild(dstCanvas);
 
   // workerにキャンバスの制御を譲渡する
-  const offscreen = dst_cnv.transferControlToOffscreen();
+  const offscreen = dstCanvas.transferControlToOffscreen();
 
   const message: VideoWorkerMessage = {
     canvas: offscreen,
-    frame_source: reader,
+    frameSource: reader,
     fps: FPS,
   };
   worker.postMessage(message, [offscreen, reader]);

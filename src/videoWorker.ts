@@ -26,12 +26,12 @@ const reportError = (e: Error) => {
 };
 
 const captureAndEncode = (
-  frame_source: ReadableStream<VideoFrame>,
+  frameSource: ReadableStream<VideoFrame>,
   cnv: OffscreenCanvas,
   fps: number,
   processChunk: EncodedVideoChunkOutputCallback
 ) => {
-  let frame_counter = 0;
+  let frameCounter = 0;
 
   const init: VideoEncoderInit = {
     output: processChunk,
@@ -51,7 +51,7 @@ const captureAndEncode = (
   const encoder = new VideoEncoder(init);
   encoder.configure(config);
 
-  const reader = frame_source.getReader();
+  const reader = frameSource.getReader();
   const readFrame = async () => {
     const result = await reader.read();
     const frame = result.value;
@@ -63,9 +63,9 @@ const captureAndEncode = (
     }
 
     if (encoder.encodeQueueSize < 5) {
-      frame_counter++;
-      const insert_keyframe = frame_counter % KEY_INTERVAL == 0;
-      encoder.encode(frame, { keyFrame: insert_keyframe });
+      frameCounter++;
+      const isKeyframe = frameCounter % KEY_INTERVAL == 0;
+      encoder.encode(frame, { keyFrame: isKeyframe });
       frame.close();
     } else {
       // エンコードが追いつかない場合はフレームを捨てる
@@ -83,15 +83,15 @@ const captureAndEncode = (
 
 const startDecodingAndRendering = (cnv: OffscreenCanvas) => {
   const ctx = cnv.getContext("2d");
-  const ready_frames: VideoFrame[] = [];
+  const readyFrames: VideoFrame[] = [];
   let underflow = true;
 
   const renderFrame = async () => {
-    if (ready_frames.length == 0) {
+    if (readyFrames.length == 0) {
       underflow = true;
       return;
     }
-    const frame = ready_frames.shift();
+    const frame = readyFrames.shift();
     underflow = false;
 
     if (frame && ctx) {
@@ -104,7 +104,7 @@ const startDecodingAndRendering = (cnv: OffscreenCanvas) => {
   };
 
   const handleFrame: VideoFrameOutputCallback = (frame) => {
-    ready_frames.push(frame);
+    readyFrames.push(frame);
     if (underflow) {
       underflow = false;
       setTimeout(renderFrame, 0);
@@ -123,7 +123,7 @@ const startDecodingAndRendering = (cnv: OffscreenCanvas) => {
 let keyCount = 0;
 
 const main = (
-  frame_source: ReadableStream<VideoFrame>,
+  frameSource: ReadableStream<VideoFrame>,
   canvas: OffscreenCanvas,
   fps: number
 ) => {
@@ -132,7 +132,7 @@ const main = (
   const processChunk: EncodedVideoChunkOutputCallback = (chunk, md) => {
     const config = md?.decoderConfig;
     if (config) {
-      console.log("decoder reconfig");
+      console.log("decoder re-config");
       decoder.configure(config);
     }
 
@@ -148,19 +148,19 @@ const main = (
       keyCount++;
     }
   };
-  captureAndEncode(frame_source, canvas, fps, processChunk);
+  captureAndEncode(frameSource, canvas, fps, processChunk);
 };
 
 type VideoWorkerMessage = {
-  frame_source: ReadableStream<VideoFrame>;
+  frameSource: ReadableStream<VideoFrame>;
   canvas: OffscreenCanvas;
   fps: number;
 };
 
 self.onmessage = async (e: MessageEvent<VideoWorkerMessage>) => {
-  const { frame_source, canvas, fps } = e.data;
+  const { frameSource, canvas, fps } = e.data;
 
-  main(frame_source, canvas, fps);
+  main(frameSource, canvas, fps);
 };
 
 export type { VideoWorkerMessage };
