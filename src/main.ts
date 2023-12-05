@@ -31,8 +31,11 @@ const startDrawing = async (app: HTMLElement) => {
 
 // WebCodecsの処理
 const startWorker = async (app: HTMLElement, srcCanvas: HTMLCanvasElement) => {
+  // コンストラクタによるworkerのインポート
+  // https://ja.vitejs.dev/guide/features.html#%E3%82%B3%E3%83%B3%E3%82%B9%E3%83%88%E3%83%A9%E3%82%AF%E3%82%BF%E3%81%AB%E3%82%88%E3%82%8B%E3%82%A4%E3%83%B3%E3%83%9B%E3%82%9A%E3%83%BC%E3%83%88
   const worker = new Worker(new URL("./videoWorker.ts", import.meta.url), {
     name: "Video worker",
+    type: "module",
   });
 
   const stream = srcCanvas.captureStream(FPS);

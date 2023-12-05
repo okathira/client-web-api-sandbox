@@ -1,6 +1,9 @@
 // H264 スムーズに動き続ける
 // const CODEC_STRING = "avc1.42001E";
 // const CODEC_STRING = "avc1.58A01E";
+
+import { getProcessChunkOutput } from "./chunkOutput";
+
 // const CODEC_STRING = "avc1.64001E";
 const CODEC_STRING = "avc1.64002A";
 
@@ -16,8 +19,6 @@ const CODEC_STRING = "avc1.64002A";
 
 // data moshing
 const KEY_INTERVAL = 120;
-const KEY_DROP_RATIO = 6;
-const DELTA_DROP_RATE = 1 / 60;
 
 const reportError = (e: Error) => {
   // Report error to the main thread
@@ -81,74 +82,14 @@ const captureAndEncode = (
   readFrame();
 };
 
-const startDecodingAndRendering = (cnv: OffscreenCanvas) => {
-  const ctx = cnv.getContext("2d");
-  const readyFrames: VideoFrame[] = [];
-  let underflow = true;
-
-  const renderFrame = async () => {
-    if (readyFrames.length == 0) {
-      underflow = true;
-      return;
-    }
-    const frame = readyFrames.shift();
-    underflow = false;
-
-    if (frame && ctx) {
-      ctx.drawImage(frame, 0, 0);
-      frame.close();
-    }
-
-    // Immediately schedule rendering of the next frame
-    setTimeout(renderFrame, 0);
-  };
-
-  const handleFrame: VideoFrameOutputCallback = (frame) => {
-    readyFrames.push(frame);
-    if (underflow) {
-      underflow = false;
-      setTimeout(renderFrame, 0);
-    }
-  };
-
-  const init: VideoDecoderInit = {
-    output: handleFrame,
-    error: reportError,
-  };
-
-  const decoder = new VideoDecoder(init);
-  return decoder;
-};
-
-let keyCount = 0;
-
 const main = (
   frameSource: ReadableStream<VideoFrame>,
   canvas: OffscreenCanvas,
   fps: number
 ) => {
-  const decoder = startDecodingAndRendering(canvas);
+  const processChunkOutput = getProcessChunkOutput(canvas);
 
-  const processChunk: EncodedVideoChunkOutputCallback = (chunk, md) => {
-    const config = md?.decoderConfig;
-    if (config) {
-      console.log("decoder re-config");
-      decoder.configure(config);
-    }
-
-    // data moshing
-    if (chunk.type === "delta") {
-      // randomly drop frames
-      if (Math.random() > DELTA_DROP_RATE) decoder.decode(chunk);
-    } else {
-      if (keyCount % KEY_DROP_RATIO === 0) decoder.decode(chunk);
-      // drop the key frame
-      else console.log(chunk);
-
-      keyCount++;
-    }
-  };
-  captureAndEncode(frameSource, canvas, fps, processChunk);
+  captureAndEncode(frameSource, canvas, fps, processChunkOutput);
 };
 
 type VideoWorkerMessage = {
