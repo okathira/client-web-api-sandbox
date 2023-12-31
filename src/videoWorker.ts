@@ -1,48 +1,75 @@
-let codec_string = "avc1.42001E";
+// H264 スムーズに動き続ける
+// const CODEC_STRING = "avc1.42001E";
+// const CODEC_STRING = "avc1.58A01E";
+
+import { getProcessChunkOutput } from "./chunkOutput";
+
+// const CODEC_STRING = "avc1.64001E";
+const CODEC_STRING = "avc1.64002A";
+
+// AV1 deltaフレームを落とすと動かなくなる
+// const CODEC_STRING = "av01.0.01M.08";
+
+// VP8 deltaフレームを落とすとカオスになる
+// const CODEC_STRING = "vp8";
+
+// VP9 もぞもぞ ブロックノイズが良く見える
+// const CODEC_STRING = "vp09.00.10.08";
+// const CODEC_STRING = "vp09.02.10.10.01.09.16.09.01";
 
 // data moshing
 const KEY_INTERVAL = 120;
-const KEY_DROP_RATIO = 6;
-const DELTA_DROP_RATE = 1 / 60;
 
-function reportError(e) {
+const reportError = (e: Error) => {
   // Report error to the main thread
   console.log(e.message);
   postMessage(e.message);
-}
+};
 
-function captureAndEncode(frame_source, cnv, fps, processChunk) {
-  let frame_counter = 0;
+const captureAndEncode = (
+  frameSource: ReadableStream<VideoFrame>,
+  cnv: OffscreenCanvas,
+  fps: number,
+  processChunk: EncodedVideoChunkOutputCallback
+) => {
+  let frameCounter = 0;
 
-  const init = {
+  const init: VideoEncoderInit = {
     output: processChunk,
     error: reportError,
   };
 
-  const config = {
-    codec: codec_string,
+  const config: VideoEncoderConfig = {
+    codec: CODEC_STRING,
     width: cnv.width,
     height: cnv.height,
     bitrate: 1000000,
     avc: { format: "annexb" },
     framerate: fps,
-    hardwareAcceleration: "prefer-software",
+    // hardwareAcceleration: "prefer-software",
   };
 
-  let encoder = new VideoEncoder(init);
+  const encoder = new VideoEncoder(init);
   encoder.configure(config);
 
-  let reader = frame_source.getReader();
-  async function readFrame() {
+  const reader = frameSource.getReader();
+  const readFrame = async () => {
     const result = await reader.read();
-    let frame = result.value;
+    const frame = result.value;
 
-    if (encoder.encodeQueueSize < 3) {
-      frame_counter++;
-      const insert_keyframe = frame_counter % KEY_INTERVAL == 0;
-      encoder.encode(frame, { keyFrame: insert_keyframe });
+    if (frame === undefined) {
+      console.log("StreamReadResult value is undefined.");
+      setTimeout(readFrame, 1);
+      return;
+    }
+
+    if (encoder.encodeQueueSize < 5) {
+      frameCounter++;
+      const isKeyframe = frameCounter % KEY_INTERVAL == 0;
+      encoder.encode(frame, { keyFrame: isKeyframe });
       frame.close();
     } else {
+      // エンコードが追いつかない場合はフレームを捨てる
       // Too many frames in flight, encoder is overwhelmed
       // let's drop this frame.
       console.log("dropping a frame");
@@ -50,78 +77,31 @@ function captureAndEncode(frame_source, cnv, fps, processChunk) {
     }
 
     setTimeout(readFrame, 1);
-  }
-
-  readFrame();
-}
-
-function startDecodingAndRendering(cnv) {
-  let ctx = cnv.getContext("2d");
-  let ready_frames = [];
-  let underflow = true;
-
-  async function renderFrame() {
-    if (ready_frames.length == 0) {
-      underflow = true;
-      return;
-    }
-    let frame = ready_frames.shift();
-    underflow = false;
-
-    ctx.drawImage(frame, 0, 0);
-    frame.close();
-
-    // Immediately schedule rendering of the next frame
-    setTimeout(renderFrame, 0);
-  }
-
-  function handleFrame(frame) {
-    ready_frames.push(frame);
-    if (underflow) {
-      underflow = false;
-      setTimeout(renderFrame, 0);
-    }
-  }
-
-  const init = {
-    output: handleFrame,
-    error: reportError,
   };
 
-  let decoder = new VideoDecoder(init);
-  return decoder;
-}
-
-let keyCount = 0;
-
-function main(frame_source, canvas, fps) {
-  let decoder = startDecodingAndRendering(canvas);
-  function processChunk(chunk, md) {
-    let config = md.decoderConfig;
-    if (config) {
-      console.log("decoder reconfig");
-      decoder.configure(config);
-    }
-
-    // data moshing
-    if (chunk.type === "delta") {
-      // randomly drop frames
-      if (Math.random() > DELTA_DROP_RATE) decoder.decode(chunk);
-    } else {
-      if (keyCount % KEY_DROP_RATIO === 0) decoder.decode(chunk);
-      // drop the key frame
-      else console.log(chunk);
-
-      keyCount++;
-    }
-  }
-  captureAndEncode(frame_source, canvas, fps, processChunk);
-}
-
-self.onmessage = async function (e) {
-  let frame_source = e.data.frame_source;
-  let canvas = e.data.canvas;
-  let fps = e.data.fps;
-
-  main(frame_source, canvas, fps);
+  readFrame();
 };
+
+const main = (
+  frameSource: ReadableStream<VideoFrame>,
+  canvas: OffscreenCanvas,
+  fps: number
+) => {
+  const processChunkOutput = getProcessChunkOutput(canvas);
+
+  captureAndEncode(frameSource, canvas, fps, processChunkOutput);
+};
+
+type VideoWorkerMessage = {
+  frameSource: ReadableStream<VideoFrame>;
+  canvas: OffscreenCanvas;
+  fps: number;
+};
+
+self.onmessage = async (e: MessageEvent<VideoWorkerMessage>) => {
+  const { frameSource, canvas, fps } = e.data;
+
+  main(frameSource, canvas, fps);
+};
+
+export type { VideoWorkerMessage };

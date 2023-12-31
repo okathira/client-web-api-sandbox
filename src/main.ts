@@ -1,210 +1,101 @@
-const foods = [
-  "🍇",
-  "🍈",
-  "🍉",
-  "🍊",
-  "🍋",
-  "🍌",
-  "🍍",
-  "🥭",
-  "🍎",
-  "🍏",
-  "🍐",
-  "🍑",
-  "🍒",
-  "🍓",
-  "🥝",
-  "🍅",
-  "🥥",
-  "🥑",
-  "🍆",
-  "🥔",
-  "🥕",
-  "🌽",
-  "🌶️",
-  "🥒",
-  "🥬",
-  "🥦",
-  "🧄",
-  "🧅",
-  "🍄",
-  "🥜",
-  "🌰",
-  "🍞",
-  "🍞",
-  "🥐",
-  "🥖",
-  "🥨",
-  "🥯",
-  "🥞",
-  "🧇",
-  "🧀",
-  "🍖",
-  "🍗",
-  "🥩",
-  "🥓",
-  "🍔",
-  "🍟",
-  "🍕",
-  "🌭",
-  "🥪",
-  "🌮",
-  "🌯",
-  "🥙",
-  "🧆",
-  "🥚",
-  "🍳",
-  "🥘",
-  "🍲",
-  "🥣",
-  "🥗",
-  "🍿",
-  "🧈",
-  "🧂",
-  "🥫",
-  "🍱",
-  "🍘",
-  "🍙",
-  "🍚",
-  "🍛",
-  "🍜",
-  "🍝",
-  "🍠",
-  "🍢",
-  "🍣",
-  "🍤",
-  "🍥",
-  "🥮",
-  "🍡",
-  "🥟",
-  "🥠",
-  "🥡",
-  "🦀",
-  "🦞",
-  "🦐",
-  "🦑",
-  "🦪",
-  "🍦",
-  "🍧",
-  "🍨",
-  "🍩",
-  "🍪",
-  "🎂",
-  "🍰",
-  "🧁",
-  "🥧",
-  "🍫",
-  "🍬",
-  "🍭",
-  "🍮",
-  "🍯",
-  "🍼",
-  "🥛",
-  "☕",
-  "🍵",
-  "🍶",
-  "🍾",
-  "🍷",
-  "🍸",
-  "🍹",
-  "🍺",
-  "🍻",
-  "🥂",
-  "🥃",
-  "🥤",
-  "🧃",
-  "🧉",
-  "🧊",
-];
+import { getAnimateCanvasFunc } from "./animateCanvas";
+import type { VideoWorkerMessage } from "./videoWorker";
 
-const getRandomFood = () => {
-  const index = Math.floor(Math.random() * foods.length);
-  return foods[index];
+const CANVAS_WIDTH = 640;
+const CANVAS_HEIGHT = 480;
+const FPS = 60;
+
+const appendCanvas = (
+  app: HTMLElement,
+  width: number,
+  height: number,
+  id: string
+) => {
+  // エンコード元となるキャンバス
+  const cnv = document.createElement("canvas");
+  cnv.width = width;
+  cnv.height = height;
+  cnv.id = id;
+  app.appendChild(cnv);
+
+  return cnv;
 };
 
 // Draw pretty animation on the source canvas
-const startDrawing = async () => {
-  const cnv = <HTMLCanvasElement>document.getElementById("src");
-  const ctx = cnv.getContext("2d");
+const startDrawing = (srcCanvas: HTMLCanvasElement) => {
+  // キャンバスの描画を行う関数
+  const animateCanvas = getAnimateCanvasFunc(srcCanvas);
 
-  ctx.fillStyle = "#fff5e6";
-  const width = cnv.width;
-  const height = cnv.height;
-  const cx = width / 2;
-  const cy = height / 2;
-  // const r = Math.min(width, height) / 5;
+  // １フレーム描画する
+  const drawOneFrame: FrameRequestCallback = (time) => {
+    animateCanvas(time);
 
-  ctx.font = "30px Helvetica";
-  const text = getRandomFood() + "📹📷Hello WebCodecs 🎥🎞️" + getRandomFood();
-  const size = ctx.measureText(text).width;
-
-  const drawOneFrame = function (time: number) {
-    const angle = Math.PI * 2 * (time / 5000);
-    const scale = 1 + 0.3 * Math.sin(Math.PI * 2 * (time / 7000));
-    ctx.save();
-    ctx.fillRect(0, 0, width, height);
-
-    ctx.translate(cx, cy);
-    ctx.rotate(angle);
-    ctx.scale(scale, scale);
-
-    ctx.fillStyle = "hsl(" + angle * 40 + ",80%,50%)";
-    ctx.fillRect(-size / 2, 10, size, 25);
-
-    ctx.fillStyle = "black";
-    ctx.fillText(text, -size / 2, 0);
-
-    ctx.restore();
+    // 描画タイミングに合わせて毎フレーム描画する
     window.requestAnimationFrame(drawOneFrame);
   };
   window.requestAnimationFrame(drawOneFrame);
 };
 
-function startWorker() {
+// WebCodecsの処理
+const startWorker = async (
+  srcCanvas: HTMLCanvasElement,
+  dstCanvas: HTMLCanvasElement,
+  afterErrorTermination: () => void
+) => {
+  // コンストラクタによるworkerのインポート
+  // https://ja.vitejs.dev/guide/features.html#%E3%82%B3%E3%83%B3%E3%82%B9%E3%83%88%E3%83%A9%E3%82%AF%E3%82%BF%E3%81%AB%E3%82%88%E3%82%8B%E3%82%A4%E3%83%B3%E3%83%9B%E3%82%9A%E3%83%BC%E3%83%88
   const worker = new Worker(new URL("./videoWorker.ts", import.meta.url), {
     name: "Video worker",
+    type: "module",
   });
-  worker.onmessage = function (e) {
+
+  const stream = srcCanvas.captureStream(FPS);
+  const track = stream.getVideoTracks()[0];
+  const mediaProcessor = new MediaStreamTrackProcessor({ track });
+  const reader = mediaProcessor.readable;
+
+  // workerにキャンバスの制御を譲渡する
+  const offscreen = dstCanvas.transferControlToOffscreen();
+
+  const message: VideoWorkerMessage = {
+    canvas: offscreen,
+    frameSource: reader,
+    fps: FPS,
+  };
+  worker.postMessage(message, [offscreen, reader]);
+
+  // workerからメッセージあったらエラーが起きているのでworkerを再起動する
+  worker.onmessage = (e) => {
     // Recreate worker in case of an error
     console.log("Worker error: " + e.data);
     worker.terminate();
-    startWorker();
+
+    afterErrorTermination();
   };
+};
 
-  // Capture animation track for the source canvas
-  const src_cnv = <HTMLCanvasElement>document.getElementById("src");
-  const fps = 60;
-  const stream = src_cnv?.captureStream(fps);
-  const track = stream.getVideoTracks()[0];
-  const media_processor = new MediaStreamTrackProcessor({ track });
-  const reader = media_processor.readable;
-
-  // Create a new destination canvas
-  const dst_cnv = document.createElement("canvas");
-  dst_cnv.width = src_cnv.width;
-  dst_cnv.height = src_cnv.height;
-  const dst = document.getElementById("dst");
-  if (dst.firstChild) dst.removeChild(dst.firstChild);
-  dst.appendChild(dst_cnv);
-  const offscreen = dst_cnv.transferControlToOffscreen();
-  worker.postMessage(
-    {
-      canvas: offscreen,
-      frame_source: reader,
-      fps: fps,
-    },
-    [offscreen, reader]
-  );
-}
-
-function main() {
+const main = async () => {
   if (!("VideoFrame" in window)) {
     document.body.innerHTML = "<h1>WebCodecs API is not supported.</h1>";
     return;
   }
 
-  startDrawing();
-  startWorker();
-}
+  const app = document.getElementById("app");
+  if (!app) throw new Error("Could not find app element");
+
+  const srcCanvas = appendCanvas(app, CANVAS_WIDTH, CANVAS_HEIGHT, "src");
+  const dstCanvas = appendCanvas(app, CANVAS_WIDTH, CANVAS_HEIGHT, "dst");
+
+  startDrawing(srcCanvas);
+
+  const restartWorker = () => {
+    // ワーカーをリスタートするタイミングでキャンバスを削除する
+    dstCanvas.remove();
+    // 再作成する
+    const newDstCanvas = appendCanvas(app, CANVAS_WIDTH, CANVAS_HEIGHT, "dst");
+    startWorker(srcCanvas, newDstCanvas, restartWorker);
+  };
+  startWorker(srcCanvas, dstCanvas, restartWorker); // workerを更にencodingとdecodingに分けたい
+};
 
 document.body.onload = main;
