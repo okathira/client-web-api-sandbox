@@ -5,17 +5,26 @@ const CANVAS_WIDTH = 640;
 const CANVAS_HEIGHT = 480;
 const FPS = 60;
 
-// Draw pretty animation on the source canvas
-const startDrawing = async (app: HTMLElement) => {
+const appendCanvas = (
+  app: HTMLElement,
+  width: number,
+  height: number,
+  id: string
+) => {
   // エンコード元となるキャンバス
   const cnv = document.createElement("canvas");
-  cnv.width = CANVAS_WIDTH;
-  cnv.height = CANVAS_HEIGHT;
-  cnv.id = "src";
+  cnv.width = width;
+  cnv.height = height;
+  cnv.id = id;
   app.appendChild(cnv);
 
+  return cnv;
+};
+
+// Draw pretty animation on the source canvas
+const startDrawing = (srcCanvas: HTMLCanvasElement) => {
   // キャンバスの描画を行う関数
-  const animateCanvas = getAnimateCanvasFunc(cnv);
+  const animateCanvas = getAnimateCanvasFunc(srcCanvas);
 
   // １フレーム描画する
   const drawOneFrame: FrameRequestCallback = (time) => {
@@ -25,12 +34,14 @@ const startDrawing = async (app: HTMLElement) => {
     window.requestAnimationFrame(drawOneFrame);
   };
   window.requestAnimationFrame(drawOneFrame);
-
-  return cnv;
 };
 
 // WebCodecsの処理
-const startWorker = async (app: HTMLElement, srcCanvas: HTMLCanvasElement) => {
+const startWorker = async (
+  srcCanvas: HTMLCanvasElement,
+  dstCanvas: HTMLCanvasElement,
+  afterErrorTermination: () => void
+) => {
   // コンストラクタによるworkerのインポート
   // https://ja.vitejs.dev/guide/features.html#%E3%82%B3%E3%83%B3%E3%82%B9%E3%83%88%E3%83%A9%E3%82%AF%E3%82%BF%E3%81%AB%E3%82%88%E3%82%8B%E3%82%A4%E3%83%B3%E3%83%9B%E3%82%9A%E3%83%BC%E3%83%88
   const worker = new Worker(new URL("./videoWorker.ts", import.meta.url), {
@@ -42,13 +53,6 @@ const startWorker = async (app: HTMLElement, srcCanvas: HTMLCanvasElement) => {
   const track = stream.getVideoTracks()[0];
   const mediaProcessor = new MediaStreamTrackProcessor({ track });
   const reader = mediaProcessor.readable;
-
-  // Create a new destination canvas
-  const dstCanvas = document.createElement("canvas");
-  dstCanvas.width = srcCanvas.width;
-  dstCanvas.height = srcCanvas.height;
-  dstCanvas.id = "dst";
-  app.appendChild(dstCanvas);
 
   // workerにキャンバスの制御を譲渡する
   const offscreen = dstCanvas.transferControlToOffscreen();
@@ -66,10 +70,7 @@ const startWorker = async (app: HTMLElement, srcCanvas: HTMLCanvasElement) => {
     console.log("Worker error: " + e.data);
     worker.terminate();
 
-    // エラーが起きたタイミングでキャンバスを削除しておけば重複気にしなくて良い気がする
-    document.getElementById("dst")?.remove();
-
-    startWorker(app, srcCanvas);
+    afterErrorTermination();
   };
 };
 
@@ -82,8 +83,19 @@ const main = async () => {
   const app = document.getElementById("app");
   if (!app) throw new Error("Could not find app element");
 
-  const srcCanvas = await startDrawing(app);
-  startWorker(app, srcCanvas);
+  const srcCanvas = appendCanvas(app, CANVAS_WIDTH, CANVAS_HEIGHT, "src");
+  const dstCanvas = appendCanvas(app, CANVAS_WIDTH, CANVAS_HEIGHT, "dst");
+
+  startDrawing(srcCanvas);
+
+  const restartWorker = () => {
+    // ワーカーをリスタートするタイミングでキャンバスを削除する
+    dstCanvas.remove();
+    // 再作成する
+    const newDstCanvas = appendCanvas(app, CANVAS_WIDTH, CANVAS_HEIGHT, "dst");
+    startWorker(srcCanvas, newDstCanvas, restartWorker);
+  };
+  startWorker(srcCanvas, dstCanvas, restartWorker); // workerを更にencodingとdecodingに分けたい
 };
 
 document.body.onload = main;
