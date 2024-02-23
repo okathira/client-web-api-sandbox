@@ -9,7 +9,7 @@ const appendCanvas = (
   app: HTMLElement,
   width: number,
   height: number,
-  id: string
+  id: string,
 ) => {
   // エンコード元となるキャンバス
   const cnv = document.createElement("canvas");
@@ -40,7 +40,7 @@ const startDrawing = (srcCanvas: HTMLCanvasElement) => {
 const startWorker = async (
   srcCanvas: HTMLCanvasElement,
   dstCanvas: HTMLCanvasElement,
-  afterErrorTermination: () => void
+  afterErrorTermination: () => void,
 ) => {
   // コンストラクタによるworkerのインポート
   // https://ja.vitejs.dev/guide/features.html#%E3%82%B3%E3%83%B3%E3%82%B9%E3%83%88%E3%83%A9%E3%82%AF%E3%82%BF%E3%81%AB%E3%82%88%E3%82%8B%E3%82%A4%E3%83%B3%E3%83%9B%E3%82%9A%E3%83%BC%E3%83%88
@@ -81,7 +81,7 @@ const main = async () => {
   }
 
   const app = document.getElementById("app");
-  if (!app) throw new Error("Could not find app element");
+  if (app == null) throw new Error("Could not find app element");
 
   const srcCanvas = appendCanvas(app, CANVAS_WIDTH, CANVAS_HEIGHT, "src");
   const dstCanvas = appendCanvas(app, CANVAS_WIDTH, CANVAS_HEIGHT, "dst");
@@ -93,9 +93,9 @@ const main = async () => {
     dstCanvas.remove();
     // 再作成する
     const newDstCanvas = appendCanvas(app, CANVAS_WIDTH, CANVAS_HEIGHT, "dst");
-    startWorker(srcCanvas, newDstCanvas, restartWorker);
+    void startWorker(srcCanvas, newDstCanvas, restartWorker);
   };
-  startWorker(srcCanvas, dstCanvas, restartWorker); // workerを更にencodingとdecodingに分けたい
+  void startWorker(srcCanvas, dstCanvas, restartWorker); // workerを更にencodingとdecodingに分けたい
 };
 
 document.body.onload = main;

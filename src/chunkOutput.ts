@@ -7,14 +7,14 @@ const startDecodingAndRendering = (cnv: OffscreenCanvas) => {
   let underflow = true;
 
   const renderFrame = async () => {
-    if (readyFrames.length == 0) {
+    if (readyFrames.length === 0) {
       underflow = true;
       return;
     }
     const frame = readyFrames.shift();
     underflow = false;
 
-    if (frame && ctx) {
+    if (frame != null && ctx != null) {
       ctx.drawImage(frame, 0, 0);
       frame.close();
     }
@@ -47,7 +47,7 @@ export const getProcessChunkOutput = (canvas: OffscreenCanvas) => {
 
   const processChunk: EncodedVideoChunkOutputCallback = (chunk, md) => {
     const config = md?.decoderConfig;
-    if (config) {
+    if (config != null) {
       console.log("decoder re-config");
       decoder.configure(config);
     }
