@@ -1,22 +1,21 @@
 import { resolve } from "path";
 import { defineConfig } from "vite";
 
-// const root = resolve(__dirname, "src");
-// const outDir = resolve(__dirname, "dist");
+const root = resolve(__dirname, "src"); // srcフォルダをrootにする。マルチページのフォルダをsrcにまとめたい＆変に階層を増やしたくない。
+const outDir = resolve(__dirname, "dist"); // でも当然ビルドフォルダはsrcの外にしたい
 
 export default defineConfig({
-  base: "./",
-  // root,
-  // publicDir: resolve(root, "public"),
+  base: "./", // JSのimportが相対パスになる。ビルドしたフォルダ単体で動くので便利。
+  root,
   build: {
-    // outDir,
-    // emptyOutDir: true,
+    outDir,
+    emptyOutDir: true,
     rollupOptions: {
       input: {
-        main: resolve(__dirname, "./src", "index.html"),
+        index: resolve(root, "index.html"),
         "webcodecs-data-moshing": resolve(
-          __dirname,
-          "./src/webcodecs-data-moshing",
+          root,
+          "webcodecs-data-moshing",
           "index.html",
         ),
       },
