@@ -14,5 +14,17 @@
   },
   "rules": {
     "@typescript-eslint/explicit-function-return-type": "off"
+  },
+  "ignorePatterns": [
+    ".eslintrc.*",
+    "vite.config.*"
+  ],
+  "plugins": [
+    "html"
+  ],
+  "settings": {
+    "html/html-extensions": [
+      ".html"
+    ]
   }
 }

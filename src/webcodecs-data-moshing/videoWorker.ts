@@ -59,7 +59,9 @@ const captureAndEncode = (
 
     if (frame === undefined) {
       console.log("StreamReadResult value is undefined.");
-      setTimeout(readFrame, 1);
+      setTimeout(() => {
+        void readFrame();
+      }, 1);
       return;
     }
 
@@ -76,7 +78,9 @@ const captureAndEncode = (
       frame.close();
     }
 
-    setTimeout(readFrame, 1);
+    setTimeout(() => {
+      void readFrame();
+    }, 1);
   };
 
   void readFrame();

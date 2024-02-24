@@ -1,5 +1,7 @@
 {
   "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
     "target": "ES2020",
     "useDefineForClassFields": true,
     "module": "ESNext",
