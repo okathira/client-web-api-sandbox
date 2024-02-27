@@ -30,7 +30,7 @@ const captureAndEncode = (
   frameSource: ReadableStream<VideoFrame>,
   cnv: OffscreenCanvas,
   fps: number,
-  processChunk: EncodedVideoChunkOutputCallback
+  processChunk: EncodedVideoChunkOutputCallback,
 ) => {
   let frameCounter = 0;
 
@@ -59,13 +59,15 @@ const captureAndEncode = (
 
     if (frame === undefined) {
       console.log("StreamReadResult value is undefined.");
-      setTimeout(readFrame, 1);
+      setTimeout(() => {
+        void readFrame();
+      }, 1);
       return;
     }
 
     if (encoder.encodeQueueSize < 5) {
       frameCounter++;
-      const isKeyframe = frameCounter % KEY_INTERVAL == 0;
+      const isKeyframe = frameCounter % KEY_INTERVAL === 0;
       encoder.encode(frame, { keyFrame: isKeyframe });
       frame.close();
     } else {
@@ -76,27 +78,29 @@ const captureAndEncode = (
       frame.close();
     }
 
-    setTimeout(readFrame, 1);
+    setTimeout(() => {
+      void readFrame();
+    }, 1);
   };
 
-  readFrame();
+  void readFrame();
 };
 
 const main = (
   frameSource: ReadableStream<VideoFrame>,
   canvas: OffscreenCanvas,
-  fps: number
+  fps: number,
 ) => {
   const processChunkOutput = getProcessChunkOutput(canvas);
 
   captureAndEncode(frameSource, canvas, fps, processChunkOutput);
 };
 
-type VideoWorkerMessage = {
+interface VideoWorkerMessage {
   frameSource: ReadableStream<VideoFrame>;
   canvas: OffscreenCanvas;
   fps: number;
-};
+}
 
 self.onmessage = async (e: MessageEvent<VideoWorkerMessage>) => {
   const { frameSource, canvas, fps } = e.data;

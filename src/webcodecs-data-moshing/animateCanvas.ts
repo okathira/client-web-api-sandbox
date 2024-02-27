@@ -8,7 +8,7 @@ const getRandomFood = () => {
 export const getAnimateCanvasFunc = (cnv: HTMLCanvasElement) => {
   const ctx = cnv.getContext("2d");
 
-  if (!ctx) throw new Error("Could not get context");
+  if (ctx == null) throw new Error("Could not get context");
 
   // キャンバスへの描画に関する設定
   ctx.fillStyle = "#fff5e6";
