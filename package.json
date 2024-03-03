@@ -7,12 +7,13 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "lint": "eslint src/**/*",
-    "lint:fix": "eslint src/**/* --fix",
-    "format": "prettier --check ./src",
-    "format:fix": "prettier --write ./src",
+    "lint": "eslint \"src/**\" --cache",
+    "lint:fix": "eslint \"src/**\" --fix --cache",
+    "format": "prettier --check \"./src\" --cache",
+    "format:fix": "prettier --write \"./src\" --cache",
     "check": "npm run lint && npm run format",
-    "check:fix": "npm run lint:fix && npm run format:fix"
+    "check:fix": "npm run lint:fix && npm run format:fix",
+    "prepare": "husky"
   },
   "devDependencies": {
     "@types/dom-mediacapture-transform": "^0.1.9",
@@ -25,6 +26,7 @@
     "eslint-plugin-import": "^2.29.1",
     "eslint-plugin-n": "^16.6.2",
     "eslint-plugin-promise": "^6.1.1",
+    "husky": "^9.0.11",
     "prettier": "^3.2.5",
     "typescript": "^5.3.3",
     "vite": "^5.0.0"
