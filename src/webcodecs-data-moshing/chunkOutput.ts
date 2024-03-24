@@ -19,19 +19,19 @@ const startDecodingAndRendering = (cnv: OffscreenCanvas) => {
       frame.close();
     }
 
-    // Immediately schedule rendering of the next frame
-    setTimeout(() => {
+    // Schedule rendering of the next frame
+    self.requestAnimationFrame(() => {
       void renderFrame();
-    }, 0);
+    });
   };
 
   const handleFrame: VideoFrameOutputCallback = (frame) => {
     readyFrames.push(frame);
     if (underflow) {
       underflow = false;
-      setTimeout(() => {
+      self.requestAnimationFrame(() => {
         void renderFrame();
-      }, 0);
+      });
     }
   };
 

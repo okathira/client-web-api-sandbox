@@ -59,15 +59,16 @@ const captureAndEncode = (
 
     if (frame === undefined) {
       console.log("StreamReadResult value is undefined.");
-      setTimeout(() => {
+      self.requestAnimationFrame(() => {
         void readFrame();
-      }, 1);
+      });
       return;
     }
 
     if (encoder.encodeQueueSize < 5) {
       frameCounter++;
       const isKeyframe = frameCounter % KEY_INTERVAL === 0;
+      console.log(`encodeQueueSize: ${encoder.encodeQueueSize}`);
       encoder.encode(frame, { keyFrame: isKeyframe });
       frame.close();
     } else {
@@ -78,9 +79,9 @@ const captureAndEncode = (
       frame.close();
     }
 
-    setTimeout(() => {
+    self.requestAnimationFrame(() => {
       void readFrame();
-    }, 1);
+    });
   };
 
   void readFrame();
