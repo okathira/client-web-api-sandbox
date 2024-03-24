@@ -22,7 +22,7 @@ const KEY_INTERVAL = 120;
 
 const reportError = (e: Error) => {
   // Report error to the main thread
-  console.log(e.message);
+  console.error(e.message);
   postMessage(e.message);
 };
 
@@ -58,7 +58,7 @@ const captureAndEncode = (
     const frame = result.value;
 
     if (frame === undefined) {
-      console.log("StreamReadResult value is undefined.");
+      console.error("StreamReadResult value is undefined.");
       self.requestAnimationFrame(() => {
         void readFrame();
       });
@@ -75,7 +75,7 @@ const captureAndEncode = (
       // エンコードが追いつかない場合はフレームを捨てる
       // Too many frames in flight, encoder is overwhelmed
       // let's drop this frame.
-      console.log("dropping a frame");
+      console.warn("dropping a frame");
       frame.close();
     }
 
