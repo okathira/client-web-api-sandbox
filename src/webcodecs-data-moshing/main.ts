@@ -1,5 +1,5 @@
 import { getAnimateCanvasFunc } from "./animateCanvas";
-import type { VideoWorkerMessage } from "./videoWorker";
+import type { VideoWorkerCommand, VideoWorkerResponse } from "./videoWorker";
 
 const CANVAS_WIDTH = 640;
 const CANVAS_HEIGHT = 480;
@@ -7,6 +7,7 @@ const FPS = 60;
 
 const VIDEO_CONTAINER_ID = "video-container";
 const START_BUTTON_ID = "start";
+const STOP_BUTTON_ID = "stop";
 
 const appendCanvas = (
   container: HTMLElement,
@@ -60,26 +61,39 @@ const startWorker = async (
   // workerにキャンバスの制御を譲渡する
   const offscreen = dstCanvas.transferControlToOffscreen();
 
-  const message: VideoWorkerMessage = {
-    canvas: offscreen,
-    frameSource: reader,
-    fps: FPS,
-  };
-
-  // workerからメッセージあったらエラーが起きているのでworkerを再起動する
-  worker.onmessage = (e) => {
-    // Recreate worker in case of an error
-    console.error("Worker error: " + e.data);
-    worker.terminate();
-
-    afterErrorTermination();
+  worker.onmessage = (e: MessageEvent<VideoWorkerResponse>) => {
+    if (e.data.response === "error") {
+      // workerからエラーメッセージを受けたらworkerを再起動する
+      // Recreate worker in case of an error
+      console.error("Worker error: " + e.data.error);
+      worker.terminate();
+      afterErrorTermination();
+    } else if (e.data.response === "stop") {
+      console.log("Worker stopped successfully");
+      worker.terminate();
+      afterErrorTermination();
+    }
   };
 
   // ボタンでworkerをスタートする
   const startButton = document.getElementById(START_BUTTON_ID);
   if (startButton == null) throw new Error("Could not find start button");
+  const commandStart: VideoWorkerCommand = {
+    command: "start",
+    canvas: offscreen,
+    frameSource: reader,
+    fps: FPS,
+  };
   startButton.onclick = () => {
-    worker.postMessage(message, [offscreen, reader]);
+    worker.postMessage(commandStart, [offscreen, reader]);
+  };
+
+  // ボタンでworkerをストップする
+  const stopButton = document.getElementById(STOP_BUTTON_ID);
+  if (stopButton == null) throw new Error("Could not find stop button");
+  const commandStop: VideoWorkerCommand = { command: "stop" };
+  stopButton.onclick = () => {
+    worker.postMessage(commandStop);
   };
 };
 
@@ -109,7 +123,7 @@ const main = async () => {
   // キャンバスの描画を開始
   startDrawing(srcCanvas);
 
-  const restartWorker = () => {
+  const restartWorker = (dstCanvas: HTMLCanvasElement) => {
     // ワーカーをリスタートするタイミングでキャンバスを削除する
     dstCanvas.remove();
     // 再作成する
@@ -119,9 +133,13 @@ const main = async () => {
       CANVAS_HEIGHT,
       "dst",
     );
-    void startWorker(srcCanvas, newDstCanvas, restartWorker);
+    void startWorker(srcCanvas, newDstCanvas, () => {
+      restartWorker(newDstCanvas);
+    });
   };
-  void startWorker(srcCanvas, dstCanvas, restartWorker); // workerを更にencodingとdecodingに分けたい
+  void startWorker(srcCanvas, dstCanvas, () => {
+    restartWorker(dstCanvas);
+  }); // workerを更にencodingとdecodingに分けたい
 };
 
 document.body.onload = main;

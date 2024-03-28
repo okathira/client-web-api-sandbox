@@ -23,7 +23,12 @@ const KEY_INTERVAL = 120;
 const reportError = (e: Error) => {
   // Report error to the main thread
   console.error(e.message);
-  postMessage(e.message);
+
+  const error: ErrorProcessResponse = {
+    response: "error",
+    error: e.message,
+  };
+  postMessage(error);
 };
 
 const captureAndEncode = (
@@ -97,16 +102,41 @@ const main = (
   captureAndEncode(frameSource, canvas, fps, processChunkOutput);
 };
 
-interface VideoWorkerMessage {
+interface StartVideoProcessCommand {
+  command: "start";
   frameSource: ReadableStream<VideoFrame>;
   canvas: OffscreenCanvas;
   fps: number;
 }
 
-self.onmessage = async (e: MessageEvent<VideoWorkerMessage>) => {
-  const { frameSource, canvas, fps } = e.data;
+interface StopVideoProcessCommand {
+  command: "stop";
+}
 
-  main(frameSource, canvas, fps);
+type VideoWorkerCommand = StartVideoProcessCommand | StopVideoProcessCommand;
+
+interface ErrorProcessResponse {
+  response: "error";
+  error: string;
+}
+
+interface StopProcessResponse {
+  response: "stop";
+}
+
+type VideoWorkerResponse = ErrorProcessResponse | StopProcessResponse;
+
+onmessage = (e: MessageEvent<VideoWorkerCommand>) => {
+  if (e.data.command === "start") {
+    const { frameSource, canvas, fps } = e.data;
+    main(frameSource, canvas, fps);
+  } else if (e.data.command === "stop") {
+    // 止める前に必要な後処理があればここに書く
+    const returnCanvas: StopProcessResponse = {
+      response: "stop",
+    };
+    postMessage(returnCanvas);
+  }
 };
 
-export type { VideoWorkerMessage };
+export type { VideoWorkerCommand, VideoWorkerResponse };
