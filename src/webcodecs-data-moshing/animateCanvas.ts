@@ -1,3 +1,5 @@
+import { getCanvasMousePosition } from "./mouse";
+
 const foods = ["🍇", "🍈", "🍉", "🍊", "🍋", "🍌", "🍍", "🥭"];
 
 const getRandomFood = () => {
@@ -21,6 +23,8 @@ export const getAnimateCanvasFunc = (cnv: HTMLCanvasElement) => {
   const text = getRandomFood() + "📹📷Hello WebCodecs 🎥🎞️" + getRandomFood();
   const size = ctx.measureText(text).width;
 
+  const mouseSize = 480;
+
   // ここではシンプルにキャンバスに描画しているだけ
   const animateCanvas = (time: number) => {
     const angle = Math.PI * 2 * (time / 5000);
@@ -37,6 +41,19 @@ export const getAnimateCanvasFunc = (cnv: HTMLCanvasElement) => {
 
     ctx.fillStyle = "black";
     ctx.fillText(text, -size / 2, 0);
+
+    ctx.restore();
+
+    // マウスの位置に合わせて描画
+    ctx.save();
+
+    const { mouseX, mouseY } = getCanvasMousePosition();
+    ctx.font = `${mouseSize}px serif`;
+    ctx.fillText(
+      "🖱️",
+      mouseX - (mouseSize / 2 + 10),
+      mouseY + (mouseSize / 4 + 10),
+    );
 
     ctx.restore();
   };

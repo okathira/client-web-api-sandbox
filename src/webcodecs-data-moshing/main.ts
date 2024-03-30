@@ -1,4 +1,5 @@
 import { getAnimateCanvasFunc } from "./animateCanvas";
+import { mouseMove, setCanvasMousePosition } from "./mouse";
 import type { VideoWorkerCommand, VideoWorkerResponse } from "./videoWorker";
 
 const CANVAS_WIDTH = 640;
@@ -155,6 +156,10 @@ const main = async () => {
     CANVAS_HEIGHT,
     "dst",
   );
+
+  // mouse座標を記録する
+  document.addEventListener("mousemove", mouseMove);
+  setCanvasMousePosition(srcCanvas);
 
   // キャンバスの描画を開始
   startDrawing(srcCanvas);
