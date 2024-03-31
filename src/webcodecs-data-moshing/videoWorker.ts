@@ -2,7 +2,7 @@
 // const CODEC_STRING = "avc1.42001E";
 // const CODEC_STRING = "avc1.58A01E";
 
-import { getProcessChunkOutput } from "./chunkOutput";
+import { getProcessChunkOutput, setNextFrameDecoding } from "./chunkOutput";
 
 // const CODEC_STRING = "avc1.64001E";
 const CODEC_STRING = "avc1.64002A";
@@ -18,12 +18,24 @@ const CODEC_STRING = "avc1.64002A";
 // const CODEC_STRING = "vp09.02.10.10.01.09.16.09.01";
 
 // data moshing
-const KEY_INTERVAL = 120;
+type NextFrameEncoding = "delta" | "key";
+let nextFrameEncoding: NextFrameEncoding = "key";
+
+export const setNextFrameEncoding = (action: NextFrameEncoding) => {
+  nextFrameEncoding = action;
+};
+
+// const KEY_INTERVAL = 120;
 
 const reportError = (e: Error) => {
   // Report error to the main thread
-  console.log(e.message);
-  postMessage(e.message);
+  console.error(e.message);
+
+  const error: ErrorProcessResponse = {
+    response: "error",
+    error: e.message,
+  };
+  postMessage(error);
 };
 
 const captureAndEncode = (
@@ -32,8 +44,6 @@ const captureAndEncode = (
   fps: number,
   processChunk: EncodedVideoChunkOutputCallback,
 ) => {
-  let frameCounter = 0;
-
   const init: VideoEncoderInit = {
     output: processChunk,
     error: reportError,
@@ -58,29 +68,38 @@ const captureAndEncode = (
     const frame = result.value;
 
     if (frame === undefined) {
-      console.log("StreamReadResult value is undefined.");
-      setTimeout(() => {
+      console.error("StreamReadResult value is undefined.");
+      self.requestAnimationFrame(() => {
         void readFrame();
-      }, 1);
+      });
       return;
     }
 
     if (encoder.encodeQueueSize < 5) {
-      frameCounter++;
-      const isKeyframe = frameCounter % KEY_INTERVAL === 0;
-      encoder.encode(frame, { keyFrame: isKeyframe });
+      // console.log(`encodeQueueSize: ${encoder.encodeQueueSize}`);
+
+      switch (nextFrameEncoding) {
+        case "key":
+          encoder.encode(frame, { keyFrame: true });
+          nextFrameEncoding = "delta";
+          break;
+        case "delta":
+          encoder.encode(frame, { keyFrame: false });
+          break;
+      }
+
       frame.close();
     } else {
       // エンコードが追いつかない場合はフレームを捨てる
       // Too many frames in flight, encoder is overwhelmed
       // let's drop this frame.
-      console.log("dropping a frame");
+      console.warn("dropping a frame");
       frame.close();
     }
 
-    setTimeout(() => {
+    self.requestAnimationFrame(() => {
       void readFrame();
-    }, 1);
+    });
   };
 
   void readFrame();
@@ -96,16 +115,70 @@ const main = (
   captureAndEncode(frameSource, canvas, fps, processChunkOutput);
 };
 
-interface VideoWorkerMessage {
+interface StartVideoProcessCommand {
+  command: "start";
   frameSource: ReadableStream<VideoFrame>;
   canvas: OffscreenCanvas;
   fps: number;
 }
+interface StopVideoProcessCommand {
+  command: "stop";
+}
+interface PlayVideoProcessCommand {
+  command: "play";
+}
+interface PauseVideoProcessCommand {
+  command: "pause";
+}
+interface DoubledVideoProcessCommand {
+  command: "double";
+}
+interface DropVideoProcessCommand {
+  command: "drop";
+}
 
-self.onmessage = async (e: MessageEvent<VideoWorkerMessage>) => {
-  const { frameSource, canvas, fps } = e.data;
+type VideoWorkerCommand =
+  | StartVideoProcessCommand
+  | StopVideoProcessCommand
+  | PlayVideoProcessCommand
+  | PauseVideoProcessCommand
+  | DoubledVideoProcessCommand
+  | DropVideoProcessCommand;
 
-  main(frameSource, canvas, fps);
+interface ErrorProcessResponse {
+  response: "error";
+  error: string;
+}
+
+interface StopProcessResponse {
+  response: "stop";
+}
+
+type VideoWorkerResponse = ErrorProcessResponse | StopProcessResponse;
+
+onmessage = (e: MessageEvent<VideoWorkerCommand>) => {
+  if (e.data.command === "start") {
+    const { frameSource, canvas, fps } = e.data;
+    main(frameSource, canvas, fps);
+  } else if (e.data.command === "stop") {
+    // 止める前に必要な後処理があればここに書く
+    const returnCanvas: StopProcessResponse = {
+      response: "stop",
+    };
+    postMessage(returnCanvas);
+  } else if (e.data.command === "play") {
+    setNextFrameEncoding("key");
+    setNextFrameDecoding("encode");
+  } else if (e.data.command === "pause") {
+    setNextFrameEncoding("delta");
+    setNextFrameDecoding("pause");
+  } else if (e.data.command === "double") {
+    setNextFrameEncoding("delta");
+    setNextFrameDecoding("double");
+  } else if (e.data.command === "drop") {
+    setNextFrameEncoding("delta");
+    setNextFrameDecoding("drop");
+  }
 };
 
-export type { VideoWorkerMessage };
+export type { VideoWorkerCommand, VideoWorkerResponse };

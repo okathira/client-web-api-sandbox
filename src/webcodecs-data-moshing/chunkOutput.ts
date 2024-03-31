@@ -1,5 +1,9 @@
-const KEY_DROP_RATIO = 6;
-const DELTA_DROP_RATE = 1 / 60;
+type NextFrameDecoding = "encode" | "drop" | "double" | "pause";
+let nextFrameDecoding: NextFrameDecoding = "encode";
+
+export const setNextFrameDecoding = (action: NextFrameDecoding) => {
+  nextFrameDecoding = action;
+};
 
 const startDecodingAndRendering = (cnv: OffscreenCanvas) => {
   const ctx = cnv.getContext("2d");
@@ -19,19 +23,19 @@ const startDecodingAndRendering = (cnv: OffscreenCanvas) => {
       frame.close();
     }
 
-    // Immediately schedule rendering of the next frame
-    setTimeout(() => {
+    // Schedule rendering of the next frame
+    self.requestAnimationFrame(() => {
       void renderFrame();
-    }, 0);
+    });
   };
 
   const handleFrame: VideoFrameOutputCallback = (frame) => {
     readyFrames.push(frame);
     if (underflow) {
       underflow = false;
-      setTimeout(() => {
+      self.requestAnimationFrame(() => {
         void renderFrame();
-      }, 0);
+      });
     }
   };
 
@@ -47,8 +51,6 @@ const startDecodingAndRendering = (cnv: OffscreenCanvas) => {
 export const getProcessChunkOutput = (canvas: OffscreenCanvas) => {
   const decoder = startDecodingAndRendering(canvas);
 
-  let keyCount = 0;
-
   const processChunk: EncodedVideoChunkOutputCallback = (chunk, md) => {
     const config = md?.decoderConfig;
     if (config != null) {
@@ -56,17 +58,29 @@ export const getProcessChunkOutput = (canvas: OffscreenCanvas) => {
       decoder.configure(config);
     }
 
-    // data moshing
-    if (chunk.type === "delta") {
-      // randomly drop frames
-      if (Math.random() > DELTA_DROP_RATE) decoder.decode(chunk);
-    } else {
-      if (keyCount % KEY_DROP_RATIO === 0) decoder.decode(chunk);
-      // drop the key frame
-      else console.log(chunk);
-
-      keyCount++;
+    switch (nextFrameDecoding) {
+      case "encode":
+        // normal operation
+        decoder.decode(chunk);
+        break;
+      case "double":
+        // double the frame
+        decoder.decode(chunk);
+        decoder.decode(chunk);
+        nextFrameDecoding = "encode";
+        break;
+      case "drop":
+        // drop the frame
+        // don't decode
+        nextFrameDecoding = "encode";
+        break;
+      case "pause":
+        // pause the decoding
+        // don't decode
+        break;
     }
+
+    console.log(chunk);
   };
 
   return processChunk;
