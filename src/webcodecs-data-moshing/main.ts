@@ -8,6 +8,10 @@ const FPS = 60;
 const VIDEO_CONTAINER_ID = "video-container";
 const START_BUTTON_ID = "start";
 const STOP_BUTTON_ID = "stop";
+const PLAY_BUTTON_ID = "play";
+const PAUSE_BUTTON_ID = "pause";
+const DOUBLE_BUTTON_ID = "double";
+const DROP_BUTTON_ID = "drop";
 
 const appendCanvas = (
   container: HTMLElement,
@@ -94,6 +98,38 @@ const startWorker = async (
   const commandStop: VideoWorkerCommand = { command: "stop" };
   stopButton.onclick = () => {
     worker.postMessage(commandStop);
+  };
+
+  // ボタンでフレームを通常再生する
+  const playButton = document.getElementById(PLAY_BUTTON_ID);
+  if (playButton == null) throw new Error("Could not find play button");
+  const commandPlay: VideoWorkerCommand = { command: "play" };
+  playButton.onclick = () => {
+    worker.postMessage(commandPlay);
+  };
+
+  // ボタンでフレームを一時停止する
+  const pauseButton = document.getElementById(PAUSE_BUTTON_ID);
+  if (pauseButton == null) throw new Error("Could not find pause button");
+  const commandPause: VideoWorkerCommand = { command: "pause" };
+  pauseButton.onclick = () => {
+    worker.postMessage(commandPause);
+  };
+
+  // ボタンでフレームを2回反映する
+  const doubleButton = document.getElementById(DOUBLE_BUTTON_ID);
+  if (doubleButton == null) throw new Error("Could not find double button");
+  const commandDouble: VideoWorkerCommand = { command: "double" };
+  doubleButton.onclick = () => {
+    worker.postMessage(commandDouble);
+  };
+
+  // ボタンでフレームを捨てる
+  const dropButton = document.getElementById(DROP_BUTTON_ID);
+  if (dropButton == null) throw new Error("Could not find drop button");
+  const commandDrop: VideoWorkerCommand = { command: "drop" };
+  dropButton.onclick = () => {
+    worker.postMessage(commandDrop);
   };
 };
 

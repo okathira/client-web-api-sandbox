@@ -2,7 +2,7 @@
 // const CODEC_STRING = "avc1.42001E";
 // const CODEC_STRING = "avc1.58A01E";
 
-import { getProcessChunkOutput } from "./chunkOutput";
+import { getProcessChunkOutput, setNextFrameDecoding } from "./chunkOutput";
 
 // const CODEC_STRING = "avc1.64001E";
 const CODEC_STRING = "avc1.64002A";
@@ -18,7 +18,14 @@ const CODEC_STRING = "avc1.64002A";
 // const CODEC_STRING = "vp09.02.10.10.01.09.16.09.01";
 
 // data moshing
-const KEY_INTERVAL = 120;
+type NextFrameEncoding = "delta" | "key";
+let nextFrameEncoding: NextFrameEncoding = "key";
+
+export const setNextFrameEncoding = (action: NextFrameEncoding) => {
+  nextFrameEncoding = action;
+};
+
+// const KEY_INTERVAL = 120;
 
 const reportError = (e: Error) => {
   // Report error to the main thread
@@ -37,8 +44,6 @@ const captureAndEncode = (
   fps: number,
   processChunk: EncodedVideoChunkOutputCallback,
 ) => {
-  let frameCounter = 0;
-
   const init: VideoEncoderInit = {
     output: processChunk,
     error: reportError,
@@ -71,10 +76,18 @@ const captureAndEncode = (
     }
 
     if (encoder.encodeQueueSize < 5) {
-      frameCounter++;
-      const isKeyframe = frameCounter % KEY_INTERVAL === 0;
-      console.log(`encodeQueueSize: ${encoder.encodeQueueSize}`);
-      encoder.encode(frame, { keyFrame: isKeyframe });
+      // console.log(`encodeQueueSize: ${encoder.encodeQueueSize}`);
+
+      switch (nextFrameEncoding) {
+        case "key":
+          encoder.encode(frame, { keyFrame: true });
+          nextFrameEncoding = "delta";
+          break;
+        case "delta":
+          encoder.encode(frame, { keyFrame: false });
+          break;
+      }
+
       frame.close();
     } else {
       // エンコードが追いつかない場合はフレームを捨てる
@@ -108,12 +121,29 @@ interface StartVideoProcessCommand {
   canvas: OffscreenCanvas;
   fps: number;
 }
-
 interface StopVideoProcessCommand {
   command: "stop";
 }
+interface PlayVideoProcessCommand {
+  command: "play";
+}
+interface PauseVideoProcessCommand {
+  command: "pause";
+}
+interface DoubledVideoProcessCommand {
+  command: "double";
+}
+interface DropVideoProcessCommand {
+  command: "drop";
+}
 
-type VideoWorkerCommand = StartVideoProcessCommand | StopVideoProcessCommand;
+type VideoWorkerCommand =
+  | StartVideoProcessCommand
+  | StopVideoProcessCommand
+  | PlayVideoProcessCommand
+  | PauseVideoProcessCommand
+  | DoubledVideoProcessCommand
+  | DropVideoProcessCommand;
 
 interface ErrorProcessResponse {
   response: "error";
@@ -136,6 +166,18 @@ onmessage = (e: MessageEvent<VideoWorkerCommand>) => {
       response: "stop",
     };
     postMessage(returnCanvas);
+  } else if (e.data.command === "play") {
+    setNextFrameEncoding("key");
+    setNextFrameDecoding("encode");
+  } else if (e.data.command === "pause") {
+    setNextFrameEncoding("delta");
+    setNextFrameDecoding("pause");
+  } else if (e.data.command === "double") {
+    setNextFrameEncoding("delta");
+    setNextFrameDecoding("double");
+  } else if (e.data.command === "drop") {
+    setNextFrameEncoding("delta");
+    setNextFrameDecoding("drop");
   }
 };
 
