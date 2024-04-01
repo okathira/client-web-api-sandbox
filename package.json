@@ -27,7 +27,7 @@
     "eslint-plugin-import": "^2.29.1",
     "eslint-plugin-n": "^16.6.2",
     "eslint-plugin-promise": "^6.1.1",
-    "markuplint": "^4.1.1",
+    "markuplint": "^4.5.0",
     "prettier": "^3.2.5",
     "typescript": "^5.4.3",
     "vite": "^5.2.6"
