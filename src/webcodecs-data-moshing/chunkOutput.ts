@@ -10,7 +10,7 @@ const startDecodingAndRendering = (cnv: OffscreenCanvas) => {
   const readyFrames: VideoFrame[] = [];
   let underflow = true;
 
-  const renderFrame = async () => {
+  const renderFrame = () => {
     if (readyFrames.length === 0) {
       underflow = true;
       return;
@@ -25,7 +25,7 @@ const startDecodingAndRendering = (cnv: OffscreenCanvas) => {
 
     // Schedule rendering of the next frame
     self.requestAnimationFrame(() => {
-      void renderFrame();
+      renderFrame();
     });
   };
 
@@ -34,7 +34,7 @@ const startDecodingAndRendering = (cnv: OffscreenCanvas) => {
     if (underflow) {
       underflow = false;
       self.requestAnimationFrame(() => {
-        void renderFrame();
+        renderFrame();
       });
     }
   };
