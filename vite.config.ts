@@ -20,6 +20,11 @@ export default defineConfig({
           "webcodecs-data-moshing",
           "index.html",
         ),
+        "webcodecs-data-moshing-react": resolve(
+          root,
+          "webcodecs-data-moshing-react",
+          "index.html",
+        ),
       },
     },
   },
