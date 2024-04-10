@@ -17,6 +17,7 @@
     "check:fix": "npm run lint:fix && npm run format:fix && npm run markup:fix"
   },
   "dependencies": {
+    "@radix-ui/themes": "^3.0.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },

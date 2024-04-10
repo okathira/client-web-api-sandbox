@@ -1,26 +1,32 @@
+import { Box, Button, Flex, Heading, Link, Text } from "@radix-ui/themes";
+
 export function App() {
   return (
     <>
-      <h1>keyframe dropping</h1>
-      original sample codes:
-      <a href="https://developer.chrome.com/articles/webcodecs/">
-        https://developer.chrome.com/articles/webcodecs/
-      </a>
-      <br />
-      <div id="app">
-        <div id="video-container">
-          <canvas id="src" width="640" height="480"></canvas>
-          <canvas id="dst" width="640" height="480"></canvas>
-        </div>
-        <div id="controls">
-          <button id="start">Start</button>
-          <button id="stop">Stop</button>
-          <button id="play">Play</button>
-          <button id="pause">Pause</button>
-          <button id="double">Double</button>
-          <button id="drop">Drop</button>
-        </div>
-      </div>
+      <Flex direction="column" gap="5">
+        <Box>
+          <Heading>keyframe dropping</Heading>
+          <Text>original sample codes: </Text>
+          <Link href="https://developer.chrome.com/docs/web-platform/best-practices/webcodecs">
+            WebCodecs による動画処理 | Web Platform | Chrome for Developers
+          </Link>
+        </Box>
+
+        <Flex direction="column" id="app" gap="4">
+          <Flex wrap="wrap" id="video-container" gap="2">
+            <canvas id="src" width="640" height="480"></canvas>
+            <canvas id="dst" width="640" height="480"></canvas>
+          </Flex>
+          <Flex id="controls" gap="2">
+            <Button id="start">Start</Button>
+            <Button id="stop">Stop</Button>
+            <Button id="play">Play</Button>
+            <Button id="pause">Pause</Button>
+            <Button id="double">Double</Button>
+            <Button id="drop">Drop</Button>
+          </Flex>
+        </Flex>
+      </Flex>
     </>
   );
 }
