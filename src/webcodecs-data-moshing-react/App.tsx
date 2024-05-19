@@ -5,7 +5,7 @@ export function App() {
     <>
       <Flex direction="column" gap="5">
         <Box>
-          <Heading>keyframe dropping</Heading>
+          <Heading as="h1">keyframe dropping</Heading>
           <Text>original sample codes: </Text>
           <Link href="https://developer.chrome.com/docs/web-platform/best-practices/webcodecs">
             WebCodecs による動画処理 | Web Platform | Chrome for Developers
