@@ -1,4 +1,5 @@
 import { resolve } from "path";
+import react from "@vitejs/plugin-react-swc";
 import { defineConfig } from "vite";
 
 const root = resolve(__dirname, "src"); // srcフォルダをrootにする。マルチページのフォルダをsrcにまとめたい＆変に階層を増やしたくない。
@@ -7,6 +8,7 @@ const outDir = resolve(__dirname, "dist"); // でも当然ビルドフォルダ�
 export default defineConfig({
   base: "./", // JSのimportが相対パスになる。ビルドしたフォルダ単体で動くので便利。
   root,
+  plugins: [react()],
   build: {
     outDir,
     emptyOutDir: true,
@@ -16,6 +18,11 @@ export default defineConfig({
         "webcodecs-data-moshing": resolve(
           root,
           "webcodecs-data-moshing",
+          "index.html",
+        ),
+        "webcodecs-data-moshing-react": resolve(
+          root,
+          "webcodecs-data-moshing-react",
           "index.html",
         ),
       },

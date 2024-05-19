@@ -45,7 +45,7 @@ const startDrawing = (srcCanvas: HTMLCanvasElement) => {
 };
 
 // WebCodecsの処理
-const startWorker = async (
+const startWorker = (
   srcCanvas: HTMLCanvasElement,
   dstCanvas: HTMLCanvasElement,
   afterErrorTermination: () => void,
@@ -133,7 +133,7 @@ const startWorker = async (
   };
 };
 
-const main = async () => {
+const main = () => {
   if (!("VideoFrame" in window)) {
     document.body.innerHTML = "<h1>WebCodecs API is not supported.</h1>";
     return;
