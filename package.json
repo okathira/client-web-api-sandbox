@@ -38,6 +38,6 @@
     "markuplint": "^4.6.1",
     "prettier": "^3.3.0",
     "typescript": "^5.4.5",
-    "vite": "^5.2.10"
+    "vite": "^5.2.12"
   }
 }
